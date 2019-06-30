@@ -176,123 +176,128 @@ function pick_elem(xs) {
 
 class State {
   constructor(id, dims, bg) {
-    return {
-      clr:   null, // colour
-      name:  null, // piece name
-      p:     null, // piece
-      loss:  false,
-      field: new Field(id, dims, bg),
-    }
+    this.clr     = null; // colour
+    this.name    = null; // piece name
+    this.p       = null; // piece
+    this.onLoss  = () => {};
+    this.field   = new Field(id, dims, bg);
   }
 
-  static rst(st) {
-    st.field.clear();
-    this.new_pc(st)
+  rst() {
+    this.field.clear();
+    this.new_pc()
   }
 
-  static tick(st) {
-    const n = Piece.trans(st.p, [0, -1]).coords;
-    if (st.field.coords_free(n)) {
-      this.trans(st, [0, -1]);
+  tick() {
+    const n = Piece.trans(this.p, [0, -1]).coords;
+    if (this.field.coords_free(n)) {
+      this.trans([0, -1]);
       return;
     }
-    this.set_pc(st)
-    this.new_pc(st)
+    this.set_pc()
+    this.new_pc()
   }
 
-  static new_pc(st) {
-    st.name = pick_elem(PIECE_NAMES);
-    st.clr  = PIECES[st.name].clr;
-    st.p    = new Piece(PIECES[st.name].blk, [4, st.field.height - 2]);
+  new_pc() {
+    this.name = pick_elem(PIECE_NAMES);
+    this.clr  = PIECES[this.name].clr;
+    this.p    = new Piece(PIECES[this.name].blk, [4, this.field.height - 2]);
 
-    if (!st.field.coords_free(st.p.coords)) {
-      st.loss = true;
+    if (!this.field.coords_free(this.p.coords)) {
+      this.onLoss()
       return;
     }
 
-    st.field.coords_fill(st.p.coords, st.clr);
+    this.field.coords_fill(this.p.coords, this.clr);
   }
 
-  static set_pc(st) {
-    st.field.coords_set(st.p.coords, st.name);
+  set_pc() {
+    this.field.coords_set(this.p.coords, this.name);
 
-    let cleared = st.p.coords
+    let cleared = this.p.coords
       .map(([_, y]) => y)
       .filter(y => {
-        for (let x = 0; x < st.field.width; ++x)
-          if (st.field.coord_free([x, y]))
+        for (let x = 0; x < this.field.width; ++x)
+          if (this.field.coord_free([x, y]))
             return false;
         return true;
       })
       .sort((a, b) => b - a); // reverse sort
 
-    cleared = new Set(cleared)
-
-    for (const y of cleared)
-      this.clear_row(st, y)
+    for (const y of new Set(cleared)) // uniq
+      this.clear_row(y)
   }
 
-  static clear_row(st, y) {
-    for (; y < st.field.height - 1; ++y)
-      for (let x = 0; x < st.field.width; ++x)
-        if (st.field.field[x][y] !== st.field.field[x][y+1])
-          st.field.coords_set(
+  clear_row(y) {
+    for (; y < this.field.height - 1; ++y)
+      for (let x = 0; x < this.field.width; ++x)
+        if (this.field.field[x][y] !== this.field.field[x][y+1])
+          this.field.coords_set(
             [[x, y]],
-            st.field.field[x][y+1]
+            this.field.field[x][y+1]
           );
   }
 
-  static _mv(st, f) {
-    st.field.coords_unfill(st.p.coords);
-    st.p = f(st.p);
-    st.field.coords_fill(st.p.coords, st.clr);
+  _mv(f) {
+    this.field.coords_unfill(this.p.coords);
+    this.p = f(this.p);
+    this.field.coords_fill(this.p.coords, this.clr);
   }
 
-  static trans(st, [dx, dy]) {
-    this._mv(st, (p) => {
+  trans([dx, dy]) {
+    this._mv((p) => {
       let np = Piece.trans(p, [dx, dy]);
 
-      if (st.field.coords_free(np.coords))
+      if (this.field.coords_free(np.coords))
         return np;
       else
         return p;
     });
   }
 
-  static dorot(st, f) {
-    this._mv(st, (p) => {
+  dorot(f) {
+    this._mv((p) => {
       let np = f(p)
       let offs =
-        get_offsets(st.name, p.st, np.st)
+        get_offsets(this.name, p.st, np.st)
         .map(off => Piece.trans(np, off));
 
       for (const x of offs)
-        if (st.field.coords_free(x.coords))
+        if (this.field.coords_free(x.coords))
           return x;
 
       return p;
     });
   }
 
-  static rotr(st) { this.dorot(st, (p) => Piece.rotr(p)); }
-  static rotl(st) { this.dorot(st, (p) => Piece.rotl(p)); }
+  rotr() { this.dorot((p) => Piece.rotr(p)); }
+  rotl() { this.dorot((p) => Piece.rotl(p)); }
 }
 
 async function main(id) {
-  let st = new State(id, [10, 20], '#eeeeee');
+  let st        = new State(id, [10, 20], '#eeeeee');
   let keyDownId = null;
+  let gId       = null;
+  let pause     = null;
+
+  let start = () => { pause = null; gId = setInterval(() => st.tick(), 1000); }
+  let stop  = () => { pause = true; clearInterval(gId); }
 
   document.addEventListener('keydown', (e) => {
     switch (e.key) {
       case 'ArrowUp'   :
-      case 'x'         : State.rotr(st); break;
-      case 'z'         : State.rotl(st); break;
-      case 'ArrowLeft' : State.trans(st, [-1,+0]); break;
-      case 'ArrowRight': State.trans(st, [+1,+0]); break;
+      case 'x'         : st.rotr(); break;
+      case 'z'         : st.rotl(); break;
+      case 'ArrowLeft' : st.trans([-1,+0]); break;
+      case 'ArrowRight': st.trans([+1,+0]); break;
       case 'ArrowDown' :
-        State.trans(st, [+0,-1])
+        st.trans([+0,-1])
         keyDownId =
-          keyDownId || setInterval(() => State.trans(st, [+0,-1]), 65);
+          keyDownId || setInterval(() => st.trans([+0,-1]), 65);
+        break;
+      case 'p'         :
+        pause ? start() : stop();
+        console.log(`paused: ${!!pause}`)
         break;
     }
   });
@@ -304,11 +309,10 @@ async function main(id) {
     }
   })
 
-  State.rst(st);
-  while (!st.loss) {
-    await sleep(1000);
-    State.tick(st);
+  st.rst();
+  start();
+  st.onLoss = () => {
+    clearInterval(gId);
+    console.log(":(");
   }
-
-  console.log(":(");
 }
