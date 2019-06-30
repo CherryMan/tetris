@@ -259,9 +259,9 @@ class State {
     });
   }
 
-  static rotr(st) {
+  static dorot(st, f) {
     this._mv(st, (p) => {
-      let np = Piece.rotr(p);
+      let np = f(p)
       let offs =
         get_offsets(st.name, p.st, np.st)
         .map(off => Piece.trans(np, off));
@@ -273,6 +273,9 @@ class State {
       return p;
     });
   }
+
+  static rotr(st) { this.dorot(st, (p) => Piece.rotr(p)); }
+  static rotl(st) { this.dorot(st, (p) => Piece.rotl(p)); }
 }
 
 async function main(id) {
@@ -281,13 +284,15 @@ async function main(id) {
 
   document.addEventListener('keydown', (e) => {
     switch (e.key) {
-      case 'ArrowLeft'  : State.trans(st, [-1, +0]); break;
-      case 'ArrowRight' : State.trans(st, [+1, +0]); break;
-      case 'ArrowUp'    : State.rotr(st);            break;
-      case 'ArrowDown'  :
-        State.trans(st, [+0, -1])
-        keyDownId = keyDownId ||
-          setInterval(() => State.trans(st, [+0, -1]), 75);
+      case 'ArrowUp'   :
+      case 'x'         : State.rotr(st); break;
+      case 'z'         : State.rotl(st); break;
+      case 'ArrowLeft' : State.trans(st, [-1,+0]); break;
+      case 'ArrowRight': State.trans(st, [+1,+0]); break;
+      case 'ArrowDown' :
+        State.trans(st, [+0,-1])
+        keyDownId =
+          keyDownId || setInterval(() => State.trans(st, [+0,-1]), 65);
         break;
     }
   });
