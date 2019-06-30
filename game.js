@@ -276,21 +276,34 @@ class State {
 }
 
 async function main(id) {
-  let st = new State(id, [10, 20], '#eeeeee')
+  let st = new State(id, [10, 20], '#eeeeee');
+  let keyDownId = null;
+
   document.addEventListener('keydown', (e) => {
     switch (e.key) {
       case 'ArrowLeft'  : State.trans(st, [-1, +0]); break;
       case 'ArrowRight' : State.trans(st, [+1, +0]); break;
-      case 'ArrowDown'  : State.trans(st, [+0, -1]); break;
       case 'ArrowUp'    : State.rotr(st);            break;
+      case 'ArrowDown'  :
+        State.trans(st, [+0, -1])
+        keyDownId = keyDownId ||
+          setInterval(() => State.trans(st, [+0, -1]), 75);
+        break;
     }
   });
 
-  State.rst(st)
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowDown') {
+      clearInterval(keyDownId);
+      keyDownId = null;
+    }
+  })
+
+  State.rst(st);
   while (!st.loss) {
     await sleep(1000);
-    State.tick(st)
+    State.tick(st);
   }
 
-  console.log(":(")
+  console.log(":(");
 }
