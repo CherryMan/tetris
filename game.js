@@ -275,26 +275,39 @@ class State {
 }
 
 async function main(id) {
-  let st        = new State(id, [10, 20], '#eeeeee');
-  let keyDownId = null;
-  let gId       = null;
-  let pause     = null;
+  let st      = new State(id, [10, 20], '#eeeeee');
+  let keyDown = {};
+  let gId     = null;
+  let pause   = null;
 
   let start = () => { pause = null; gId = setInterval(() => st.tick(), 1000); }
   let stop  = () => { pause = true; clearInterval(gId); }
+
+  let doTrans = (delay, i, trans) => {
+    if (keyDown[i]) return;
+    keyDown[i] = true;
+    (function f() {
+      if (keyDown[i]) {
+        trans();
+        setTimeout(f, delay);
+      }
+    })();
+  }
 
   document.addEventListener('keydown', (e) => {
     switch (e.key) {
       case 'ArrowUp'   :
       case 'x'         : st.rotr(); break;
       case 'z'         : st.rotl(); break;
-      case 'ArrowLeft' : st.trans([-1,+0]); break;
-      case 'ArrowRight': st.trans([+1,+0]); break;
-      case 'ArrowDown' :
-        st.trans([+0,-1])
-        keyDownId =
-          keyDownId || setInterval(() => st.trans([+0,-1]), 65);
+      case 'ArrowLeft' :
+        doTrans(110, e.key, () => st.trans([-1,+0]));
+        keyDown['ArrowRight'] = false;
         break;
+      case 'ArrowRight':
+        doTrans(110, e.key, () => st.trans([+1,+0]));
+        keyDown['ArrowLeft'] = false;
+        break;
+      case 'ArrowDown' : doTrans( 65, e.key, () => st.trans([+0,-1])); break;
       case 'p'         :
         pause ? start() : stop();
         console.log(`paused: ${!!pause}`)
@@ -303,11 +316,8 @@ async function main(id) {
   });
 
   document.addEventListener('keyup', (e) => {
-    if (e.key === 'ArrowDown') {
-      clearInterval(keyDownId);
-      keyDownId = null;
-    }
-  })
+    keyDown[e.key] && (keyDown[e.key] = false);
+  });
 
   st.rst();
   start();
