@@ -185,17 +185,28 @@ class State {
 
   rst() {
     this.field.clear();
-    this.new_pc()
+    this.new_pc();
   }
 
-  tick() {
+  grav() {
+    if (!this.drop())
+      this.next_pc();
+  }
+
+  hard_drop() {
+    while (this.drop()); // null statement
+    this.next_pc();
+  }
+
+  next_pc() { this.set_pc(); this.new_pc(); }
+
+  drop() {
     const n = Piece.trans(this.p, [0, -1]).coords;
     if (this.field.coords_free(n)) {
       this.trans([0, -1]);
-      return;
+      return true;
     }
-    this.set_pc()
-    this.new_pc()
+    return false;
   }
 
   new_pc() {
@@ -280,7 +291,7 @@ async function main(id) {
   let gId     = null;
   let pause   = null;
 
-  let start = () => { pause = null; gId = setInterval(() => st.tick(), 1000); }
+  let start = () => { pause = null; gId = setInterval(() => st.grav(), 1000); }
   let stop  = () => { pause = true; clearInterval(gId); }
 
   let doTrans = (delay, i, trans) => {
@@ -296,6 +307,7 @@ async function main(id) {
 
   document.addEventListener('keydown', (e) => {
     switch (e.key) {
+      case ' '         : st.hard_drop(); break;
       case 'ArrowUp'   :
       case 'x'         : st.rotr(); break;
       case 'z'         : st.rotl(); break;
@@ -307,7 +319,7 @@ async function main(id) {
         doTrans(110, e.key, () => st.trans([+1,+0]));
         keyDown['ArrowLeft'] = false;
         break;
-      case 'ArrowDown' : doTrans( 65, e.key, () => st.trans([+0,-1])); break;
+      case 'ArrowDown' : doTrans(65, e.key, () => st.grav()); break;
       case 'p'         :
         pause ? start() : stop();
         console.log(`paused: ${!!pause}`)
