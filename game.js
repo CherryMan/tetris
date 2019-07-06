@@ -69,11 +69,26 @@ class Field {
       .map(() => new Uint8Array(height).fill(0));
 
     Object.defineProperties(this, {
-      width:     { writable: false, value: width },
+      width:     { writable: false, value: width  },
       height:    { writable: false, value: height },
       bg_clr:    { writable: false, value: bg_clr },
-      blk_width: { writable: false, value: this.cnv.width/width },
     });
+
+    this.reset_dims();
+  }
+
+  reset_dims() {
+    let winRatio   = window.innerWidth / window.innerHeight;
+    let fieldRatio = this.width / this.height;
+
+    let w =
+      winRatio >= fieldRatio
+      ? window.innerHeight / this.height
+      : window.innerWidth  / this.width
+
+    this.blk_width  = Math.trunc(.99 * w);
+    this.cnv.width  = this.blk_width * this.width;
+    this.cnv.height = this.blk_width * this.height;
   }
 
   clear() {
