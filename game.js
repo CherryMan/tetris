@@ -290,8 +290,7 @@ class State {
   rotl() { this.dorot((p) => Piece.rotl(p)); }
 }
 
-function main(id) {
-  let st      = new State(id, [10, 20]);
+function run(st) {
   let keyDown = {};
   let gId     = null;
   let pause   = null;
@@ -310,7 +309,7 @@ function main(id) {
     })();
   }
 
-  document.addEventListener('keydown', (e) => {
+  let keydownCB = (e) => {
     switch (e.key) {
       case ' '         : st.hard_drop(); break;
       case 'ArrowUp'   :
@@ -330,18 +329,36 @@ function main(id) {
         console.log(`paused: ${!!pause}`)
         break;
     }
-  });
+  };
 
-  document.addEventListener('keyup', (e) => {
+  let keyupCB = (e) => {
     keyDown[e.key] && (keyDown[e.key] = false);
-  });
+  };
 
-  window.onload = window.onresize = () => st.reload();
+  st.onLoss = () => {
+    clearInterval(gId);
+    document.removeEventListener('keydown', keydownCB);
+    document.removeEventListener('keyup', keyupCB);
+  }
+
+  document.addEventListener('keydown', keydownCB);
+  document.addEventListener('keyup', keyupCB);
 
   st.rst();
   start();
-  st.onLoss = () => {
-    clearInterval(gId);
-    console.log(":(");
-  }
+}
+
+function main(id) {
+  let st = new State(id, [10, 20]);
+  window.onload = window.onresize = () => st.reload();
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'r') {
+      st.onLoss(); // clean up
+      run(st);
+    }
+  });
+
+  // Sets callbacks and returns
+  run(st);
 }
