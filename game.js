@@ -1,32 +1,23 @@
 'use strict';
 
-const PIECES = {
-  I: { clr: '#00bfb2', blk: [[-1,+0], [+0,+0], [+1,+0], [+2,+0]] },
-  O: { clr: '#f7f052', blk: [[+0,+0], [+1,+0], [+1,+1], [+0,+1]] },
-  T: { clr: '#6f2dbd', blk: [[+0,+0], [-1,+0], [+0,+1], [+1,+0]] },
-  J: { clr: '#2191fb', blk: [[-1,+1], [-1,+0], [+0,+0], [+1,+0]] },
-  L: { clr: '#f6511d', blk: [[-1,+0], [+0,+0], [+1,+0], [+1,+1]] },
-  S: { clr: '#7ac74f', blk: [[-1,+0], [+0,+0], [+0,+1], [+1,+1]] },
-  Z: { clr: '#e23863', blk: [[-1,+1], [+0,+1], [+0,+0], [+1,+0]] },
-};
+const PIECES = [
+/*0*/{ clr: '#eaeaea' }, // background
+/*I*/{ clr: '#00bfb2', blk: [[-1,+0], [+0,+0], [+1,+0], [+2,+0]] },
+/*O*/{ clr: '#f7f052', blk: [[+0,+0], [+1,+0], [+1,+1], [+0,+1]] },
+/*T*/{ clr: '#6f2dbd', blk: [[+0,+0], [-1,+0], [+0,+1], [+1,+0]] },
+/*J*/{ clr: '#2191fb', blk: [[-1,+1], [-1,+0], [+0,+0], [+1,+0]] },
+/*L*/{ clr: '#f6511d', blk: [[-1,+0], [+0,+0], [+1,+0], [+1,+1]] },
+/*S*/{ clr: '#7ac74f', blk: [[-1,+0], [+0,+0], [+0,+1], [+1,+1]] },
+/*Z*/{ clr: '#e23863', blk: [[-1,+1], [+0,+1], [+0,+0], [+1,+0]] },
+];
 
-const PIECE_NAMES = Object.keys(PIECES);
+function pick_piece() {
+  return Math.trunc((PIECES.length - 1) * Math.random()) + 1;
+}
 
 function offset_tbl(piece_name, state) {
   switch (piece_name) {
-    case 'T':
-    case 'J':
-    case 'L':
-    case 'S':
-    case 'Z':
-      return [
-        [[+0,+0], [+0,+0], [+0,+0], [+0,+0], [+0,+0]],
-        [[+0,+0], [+1,+0], [+1,-1], [+0,+2], [+1,+2]],
-        [[+0,+0], [+0,+0], [+0,+0], [+0,+0], [+0,+0]],
-        [[+0,+0], [-1,+0], [-1,-1], [+0,+2], [-1,+2]],
-      ][state];
-      break;
-    case 'I':
+    case 1: // I
       return [
         [[+0,+0], [-1,+0], [+2,+0], [-1,+0], [+2,+0]],
         [[-1,+0], [+0,+0], [+0,+0], [+0,+1], [+0,-2]],
@@ -34,12 +25,20 @@ function offset_tbl(piece_name, state) {
         [[+0,+1], [+0,+1], [+0,+1], [+0,-1], [+0,+2]],
       ][state];
       break;
-    case 'O':
+    case 2: // O
       return [
         [[+0,+0]],
         [[+0,-1]],
         [[-1,-1]],
         [[-1,+0]],
+      ][state];
+      break;
+    default:
+      return [
+        [[+0,+0], [+0,+0], [+0,+0], [+0,+0], [+0,+0]],
+        [[+0,+0], [+1,+0], [+1,-1], [+0,+2], [+1,+2]],
+        [[+0,+0], [+0,+0], [+0,+0], [+0,+0], [+0,+0]],
+        [[+0,+0], [-1,+0], [-1,-1], [+0,+2], [-1,+2]],
       ][state];
       break;
   }
@@ -61,18 +60,14 @@ function get_offsets(piece_name, prev_st, next_st) {
 }
 
 class Field {
-  constructor(id, [width, height], bg_clr) {
-    this.cnv = document.getElementById(id);
-    this.ctx = this.cnv.getContext('2d', { alpha: false });
+  constructor(id, [width, height]) {
+    this.width  = width;
+    this.height = height;
+    this.cnv    = document.getElementById(id);
+    this.ctx    = this.cnv.getContext('2d', { alpha: false });
 
     this.field = new Array(width).fill(0)
       .map(() => new Uint8Array(height).fill(0));
-
-    Object.defineProperties(this, {
-      width:     { writable: false, value: width  },
-      height:    { writable: false, value: height },
-      bg_clr:    { writable: false, value: bg_clr },
-    });
 
     this.reset_dims();
   }
@@ -94,7 +89,7 @@ class Field {
   clear() {
     this.field = this.field.map((x) => x.fill(0));
 
-    this.ctx.fillStyle = this.bg_clr;
+    this.ctx.fillStyle = PIECES[0].clr;
     this.ctx.fillRect(0, 0, this.cnv.width, this.cnv.height);
   }
 
@@ -115,8 +110,8 @@ class Field {
     ];
   }
 
-  coords_fill(coords, clr) {
-    this.ctx.fillStyle = clr;
+  coords_fill(coords, name) {
+    this.ctx.fillStyle = PIECES[name].clr;
     for (let [x, y] of coords.map(c => this.coord_to_px(c)))
       this.ctx.fillRect(
         x, y,
@@ -124,22 +119,11 @@ class Field {
       );
   }
 
-  coords_unfill(cs) { this.coords_fill(cs, this.bg_clr); }
-
-  coords_set(cs, name) {
-    name = name !== 0 && Number.isInteger(name)
-      ? String.fromCharCode(name) : name
-
-    let clr =
-      name === 0 ? this.bg_clr : PIECES[name].clr;
-
-    this.coords_fill(cs, clr);
-
-    for (const [x, y] of cs)
-      this.field[x][y] = name && name.charCodeAt(0);
+  coords_set(coords, name) {
+    this.coords_fill(coords, name);
+    for (const [x, y] of coords)
+      this.field[x][y] = name;
   }
-
-  coords_unset(cs) { this.coords_set(cs, 0); }
 }
 
 class Piece {
@@ -185,17 +169,12 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-function pick_elem(xs) {
-  return xs[Math.floor(xs.length * Math.random())];
-}
-
 class State {
-  constructor(id, dims, bg) {
-    this.clr     = null; // colour
-    this.name    = null; // piece name
-    this.p       = null; // piece
-    this.onLoss  = () => {};
-    this.field   = new Field(id, dims, bg);
+  constructor(id, dims) {
+    this.name   = null; // piece name
+    this.p      = null; // piece
+    this.onLoss = () => {};
+    this.field  = new Field(id, dims);
   }
 
   rst() {
@@ -225,8 +204,7 @@ class State {
   }
 
   new_pc() {
-    this.name = pick_elem(PIECE_NAMES);
-    this.clr  = PIECES[this.name].clr;
+    this.name = pick_piece();
     this.p    = new Piece(PIECES[this.name].blk, [4, this.field.height - 2]);
 
     if (!this.field.coords_free(this.p.coords)) {
@@ -234,7 +212,7 @@ class State {
       return;
     }
 
-    this.field.coords_fill(this.p.coords, this.clr);
+    this.field.coords_fill(this.p.coords, this.name);
   }
 
   set_pc() {
@@ -265,9 +243,9 @@ class State {
   }
 
   _mv(f) {
-    this.field.coords_unfill(this.p.coords);
+    this.field.coords_fill(this.p.coords, 0);
     this.p = f(this.p);
-    this.field.coords_fill(this.p.coords, this.clr);
+    this.field.coords_fill(this.p.coords, this.name);
   }
 
   trans([dx, dy]) {
@@ -300,8 +278,8 @@ class State {
   rotl() { this.dorot((p) => Piece.rotl(p)); }
 }
 
-async function main(id) {
-  let st      = new State(id, [10, 20], '#eaeaea');
+function main(id) {
+  let st      = new State(id, [10, 20]);
   let keyDown = {};
   let gId     = null;
   let pause   = null;
