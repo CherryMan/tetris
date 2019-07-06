@@ -86,6 +86,12 @@ class Field {
     this.cnv.height = this.blk_width * this.height;
   }
 
+  redraw() {
+    this.field
+      .forEach((a, x) =>
+        a.forEach((c, y) => this.coords_fill([[x,y]], c)));
+  }
+
   clear() {
     this.field = this.field.map((x) => x.fill(0));
 
@@ -242,6 +248,12 @@ class State {
           );
   }
 
+  reload() {
+    this.field.reset_dims();
+    this.field.redraw();
+    this.field.coords_fill(this.p.coords, this.name);
+  }
+
   _mv(f) {
     this.field.coords_fill(this.p.coords, 0);
     this.p = f(this.p);
@@ -323,6 +335,8 @@ function main(id) {
   document.addEventListener('keyup', (e) => {
     keyDown[e.key] && (keyDown[e.key] = false);
   });
+
+  window.onload = window.onresize = () => st.reload();
 
   st.rst();
   start();
