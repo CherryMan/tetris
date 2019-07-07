@@ -15,6 +15,7 @@ function pick_piece() {
   return Math.trunc((PIECES.length - 1) * Math.random()) + 1;
 }
 
+// See https://tetris.wiki/SRS#How_Guideline_SRS_Really_Works
 function offset_tbl(piece_name, state) {
   switch (piece_name) {
     case 1: // I
